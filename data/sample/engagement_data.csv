@@ -1,0 +1,11 @@
+date,platform,post_id,content_type,engagement,likes,comments,shares,reach,impressions,hashtags
+2024-01-01,instagram,ig_001,image,245,200,25,20,1200,1800,"#socialmedia,#marketing,#instagram"
+2024-01-01,facebook,fb_001,text,89,65,15,9,890,1200,"#facebook,#business"
+2024-01-01,twitter,tw_001,text,45,30,8,7,520,780,"#twitter,#socialmedia"
+2024-01-02,instagram,ig_002,video,420,350,35,35,2100,3200,"#video,#content,#instagram"
+2024-01-02,linkedin,ln_001,article,156,120,25,11,1200,1800,"#linkedin,#professional"
+2024-01-03,tiktok,tt_001,video,1250,1100,85,65,5600,8900,"#tiktok,#viral,#trending"
+2024-01-03,instagram,ig_003,carousel,580,480,45,55,2400,3600,"#carousel,#tips,#howto"
+2024-01-04,facebook,fb_002,image,156,120,18,18,980,1450,"#motivation,#monday"
+2024-01-04,twitter,tw_002,thread,78,45,15,18,690,1200,"#thread,#tips,#marketing"
+2024-01-05,linkedin,ln_002,text,245,180,35,30,1800,2700,"#business,#insights,#growth"
