@@ -517,7 +517,7 @@ def fetch_instagram_hashtag_posts(hashtag, access_token = Meta_ACCESS_TOKEN):
     # First, search for the hashtag ID
     hashtag_search_url = f'https://graph.facebook.com/v12.0/ig_hashtag_search'
     hashtag_search_params = {
-        'user_id': "17841460374471491",
+        'user_id': INSTAGRAM_USER_ID,
         'q': hashtag,
         'access_token': Meta_ACCESS_TOKEN
     }
@@ -576,53 +576,74 @@ def fetch_instagram_hashtag_posts(hashtag, access_token = Meta_ACCESS_TOKEN):
 
 #-------------AUto Post---------------------
 
-def upload_media_to_instagram(media_url, access_token, user_id):
+
+
+# Function to upload media (image or video) to Instagram
+def upload_media_to_instagram(media_url, caption, access_token, user_id):
     url = f"https://graph.instagram.com/{user_id}/media"
     
     # Payload to upload the media (image/video)
     payload = {
-        "image_url": media_url,  # Image URL for upload
-        "access_token": access_token
+        "image_url": media_url,  # Image URL to upload
+        "caption": caption,      # Caption for the post
+        "access_token": INSTAGRAM_ACCESS_TOKEN  # Access token
     }
     
-    # Send request to upload media
-    res = requests.post(url, data=payload).json()
+    # Send the request to upload media as JSON
+    response = requests.post(url, json=payload).json()
     
-    if "id" in res:
-        media_id = res["id"]  # Media ID returned from Instagram
+    # Debug: Print the response to ensure the media upload was successful
+    print(f"Upload response: {response}")
+    
+    if "id" in response:
+        media_id = response["id"]  # Media ID returned from Instagram
         print(f"Media uploaded successfully! Media ID: {media_id}")
         return media_id
     else:
-        print(f"Error uploading media: {res.get('error', 'Unknown error')}")
-        return None
-# Function to auto-post to Instagram (with 2-step process)
+        error_message = response.get('error', 'Unknown error')
+        print(f"Error uploading media: {error_message}")
+        raise HTTPException(status_code=400, detail=f"Error uploading media: {error_message}")
 
-
+# Function to publish the uploaded media as a post
 def publish_post(media_id, access_token, user_id):
-    url = f"https://graph.instagram.com/{user_id}/media_publish"
-    payload = {
-        "creation_id": media_id,
-        "access_token": INSTAGRAM_ACCESS_TOKEN
-    }
-
-    res = requests.post(url, data=payload).json()
-
-    if "id" in res:
-        return res["id"]  # Return post_id after successful publish
-    else:
-        raise HTTPException(status_code=400, detail="Failed to publish post on Instagram")
-def auto_post_instagram(content):
-    # Replace with your actual Instagram access token and user ID
-    INSTAGRAM_USER_ID = "your_instagram_user_id"
-    INSTAGRAM_ACCESS_TOKEN = "your_instagram_access_token"
+    url = f"https://graph.instagram.com/{INSTAGRAM_USER_ID}/media_publish"
     
-    # Step 1: Upload media
-    media_id = upload_media_to_instagram(content["media_url"], INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_USER_ID)
+    # Payload to publish the media
+    payload = {
+        "creation_id": media_id,  # Media ID to be published
+        "access_token": INSTAGRAM_ACCESS_TOKEN   # Access token
+    }
+    
+    # Send request to publish the media
+    response = requests.post(url, json=payload).json()
+    
+    # Debug: Print the response to check if the post was published successfully
+    print(f"Publish response: {response}")
+    
+    if "id" in response:
+        post_id = response["id"]  # Return post_id after successful publish
+        print(f"Post published successfully! Post ID: {post_id}")
+        return post_id
+    else:
+        error_message = response.get('error', 'Unknown error')
+        print(f"Error publishing post: {error_message}")
+        raise HTTPException(status_code=400, detail=f"Error publishing post: {error_message}")
 
-    # Step 2: Publish post using the media ID
-    post_id = publish_post(media_id, INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_USER_ID)
+# Function to handle dynamic content such as media_url and caption
+def auto_post_instagram(content, access_token = INSTAGRAM_ACCESS_TOKEN , user_id = INSTAGRAM_USER_ID):
+    # Step 1: Upload the media
+    media_id = upload_media_to_instagram(content["media_url"], content["caption"], INSTAGRAM_ACCESS_TOKEN , INSTAGRAM_USER_ID)
 
+    # If media upload fails, return an error
+    if media_id is None:
+        return {"success": False, "message": "Failed to upload media"}
+
+    # Step 2: Publish the uploaded media as a post
+    post_id = publish_post(media_id, INSTAGRAM_ACCESS_TOKEN , INSTAGRAM_USER_ID)
+
+    # Return success with the post ID
     return {"success": True, "post_id": post_id}
+
 
 
 def auto_post_reddit(content):
@@ -820,12 +841,16 @@ def get_post_history():
     return {"history": items}
 
 
+
 @app.post("/auto_post")
 async def auto_post(request: PostRequest):
-    data = request.dict()
+    data = request.dict()  # Convert the request data to a dictionary
     results = {}
 
+    # Check if Instagram is in the platforms list
     if "instagram" in data["platforms"]:
+        print(f"Access Token: {Meta_ACCESS_TOKEN}")
+        # Pass content to auto_post_instagram
         results["instagram"] = auto_post_instagram(data["content"])
 
     if "reddit" in data["platforms"]:
