@@ -1,21 +1,83 @@
 .profile {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
+  align-items: flex-start;
+  margin: 40px 0;
+  font-family: "Arial", sans-serif;
 }
 
 .profile-card {
   background: #fff;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 30px 25px;
+  border-radius: 16px;
   text-align: center;
-  width: 300px;
+  width: 350px;
   border: 1px solid #e6e9ee;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .profile-card img {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
+  margin-bottom: 20px;
+  object-fit: cover;
+  border: 2px solid #ddd;
+}
+
+.profile-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.profile-card p {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.profile-card input,
+.profile-card textarea {
+  width: 100%;
+  padding: 10px 12px;
   margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.profile-card input:focus,
+.profile-card textarea:focus {
+  border-color: #4a90e2;
+}
+
+.profile-card textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.profile-card button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: #4a90e2;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.profile-card button:hover {
+  background-color: #357ab7;
+}
+
+.profile-card .message {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: green;
 }
