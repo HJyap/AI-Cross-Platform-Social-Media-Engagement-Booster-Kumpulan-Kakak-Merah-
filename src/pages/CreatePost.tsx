@@ -3,54 +3,76 @@ import type { ChangeEvent } from "react";
 import "./CreatePost.css";
 
 export default function CreatePost() {
-  const [text, setText] = useState("");
-  const [image, setImage] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
 
-  // Handle text input
-  const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    setText(e.target.value);
-  };
+  // Handle image selection + upload
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
 
-  // Handle image upload
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImage(URL.createObjectURL(file)); // preview image locally
+    try {
+      // 1️⃣ Request presigned URL from API Gateway/Lambda
+      const res = await fetch(
+        `https://nnbvdxpzy8.execute-api.ap-southeast-1.amazonaws.com/prod/upload?filename=${encodeURIComponent(file.name)}`
+      );
+
+      if (!res.ok) throw new Error("Failed to fetch presigned URL");
+
+      const data = await res.json();
+
+      if (!data.uploadUrl) {
+        throw new Error("No uploadUrl in response");
+      }
+
+      const { uploadUrl, key } = data;
+
+      // 2️⃣ Upload file directly to S3
+      const upload = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!upload.ok) throw new Error("Upload failed");
+
+      setUploadedKey(key);
+      alert("✅ Uploaded to S3: " + key);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("❌ Upload failed: " + err);
+    } finally {
+      setUploading(false);
     }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("Post created! (dummy for now)");
-    // Later: send `text` + `image` to backend
   };
 
   return (
     <div className="create-post">
       <h1>Create Post</h1>
 
-      <form onSubmit={handleSubmit}>
-        {/* Text Input */}
-        <textarea
-          placeholder="What's on your mind?"
-          value={text}
-          onChange={handleTextChange}
-        />
-
+      <form>
         {/* Image Upload */}
         <input type="file" accept="image/*" onChange={handleImageChange} />
 
-        <button type="submit">Post</button>
+        {uploading && <p>Uploading...</p>}
       </form>
 
       {/* Preview */}
       <div className="preview">
-        <h3>Post Preview</h3>
+        <h3>Preview</h3>
         <div className="preview-card">
-          {text && <p>{text}</p>}
-          {image && <img src={image} alt="preview" />}
+          {imagePreview && <img src={imagePreview} alt="preview" />}
+          {uploadedKey && (
+            <p style={{ color: "green" }}>Uploaded as: {uploadedKey}</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
