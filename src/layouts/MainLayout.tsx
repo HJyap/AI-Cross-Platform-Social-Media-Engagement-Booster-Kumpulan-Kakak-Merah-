@@ -1,12 +1,15 @@
 import { Outlet, Link } from "react-router-dom";
 import "./MainLayout.css";
+import Logo from "../assets/logo.svg";
 
 export default function MainLayout() {
   return (
     <div className="main-layout">
       {/* Sidebar */}
       <aside className="sidebar">
-        <h2 className="logo">🚀 SocialHub</h2>
+        <div className="logo">
+          <img src={Logo} alt="App logo" className="logo-img" />
+        </div>
         <nav>
           <Link to="/">Dashboard</Link>
           <Link to="/analytics">Analytics</Link>

@@ -1,32 +1,42 @@
-import { Link } from "react-router-dom"; // add at top
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Auth.css";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) {
-      alert("No account found. Please sign up first.");
-      return;
-    }
+    setError("");
 
     try {
-      const user = JSON.parse(storedUser);
-      if (user.email === email && user.password === password) {
-        localStorage.setItem("loggedIn", "true");
-        window.location.href = "/"; // redirect to dashboard
-      } else {
-        alert("Invalid email or password.");
+      const response = await fetch(
+        "https://7s1895lwg3.execute-api.ap-southeast-1.amazonaws.com/dev/signin",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Sign in failed");
+        return;
       }
+
+      // Save user data to localStorage
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect to dashboard
+      navigate("/");
     } catch (err) {
-      console.error("Error parsing user data:", err);
-      alert("Something went wrong. Please sign up again.");
-      localStorage.removeItem("user");
+      setError("Network error");
+      console.error(err);
     }
   };
 
@@ -34,6 +44,7 @@ export default function SignIn() {
     <div className="auth">
       <form onSubmit={handleSubmit} className="auth-card">
         <h2>Sign In</h2>
+        {error && <p className="error">{error}</p>}
         <input
           type="email"
           placeholder="Email"
@@ -50,7 +61,7 @@ export default function SignIn() {
         />
         <button type="submit">Sign In</button>
         <p>
-          Don’t have an account? <Link to="/signup">Sign Up</Link>
+          Don't have an account? <a href="/signup">Sign Up</a>
         </p>
       </form>
     </div>

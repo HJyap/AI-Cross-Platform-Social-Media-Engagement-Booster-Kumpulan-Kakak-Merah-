@@ -1,24 +1,48 @@
-import { Link } from "react-router-dom"; // add at top
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Auth.css";
 
 export default function SignUp() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newUser = { name, email, password };
+    setError("");
 
-    localStorage.setItem("user", JSON.stringify(newUser)); // Save user object
-    window.location.href = "/"; // Redirect to dashboard
+    try {
+      const response = await fetch(
+        "https://7s1895lwg3.execute-api.ap-southeast-1.amazonaws.com/dev/signup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Signup failed");
+        return;
+      }
+
+      // Signup successful → navigate to Sign In
+      navigate("/signin");
+    } catch (err) {
+      setError("Network error");
+      console.error(err);
+    }
   };
 
   return (
     <div className="auth">
       <form onSubmit={handleSubmit} className="auth-card">
         <h2>Sign Up</h2>
+        {error && <p className="error">{error}</p>}
         <input
           type="text"
           placeholder="Full Name"
@@ -42,7 +66,7 @@ export default function SignUp() {
         />
         <button type="submit">Sign Up</button>
         <p>
-          Already have an account? <Link to="/signin">Sign In</Link>
+          Already have an account? <a href="/signin">Sign In</a>
         </p>
       </form>
     </div>

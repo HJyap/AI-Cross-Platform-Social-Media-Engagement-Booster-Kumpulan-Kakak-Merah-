@@ -16,12 +16,6 @@
   padding: 20px;
 }
 
-.sidebar .logo {
-  margin-bottom: 30px;
-  font-size: 18px;
-  font-weight: bold;
-}
-
 .sidebar nav {
   display: flex;
   flex-direction: column;
@@ -39,6 +33,13 @@
 
 .sidebar nav a:hover {
   background: #374151; /* lighter gray on hover */
+}
+
+.sidebar .logo-img {
+  width: 220px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 /* Main content area */
