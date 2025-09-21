@@ -24,26 +24,6 @@ input[type="file"] {
   cursor: pointer;
 }
 
-button {
-  padding: 10px;
-  background: #111827;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s ease-in-out;
-}
-
-button:hover {
-  background: #374151;
-}
-
-button:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
 .preview {
   margin-top: 20px;
 }
@@ -67,3 +47,36 @@ button:disabled {
   border-radius: 6px;
   object-fit: contain;
 }
+
+/* ✅ New styles */
+.post-details {
+  margin-top: 15px;
+  text-align: left;
+}
+
+.post-details h4 {
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.caption {
+  margin-bottom: 8px;
+  font-style: italic;
+  color: #374151;
+}
+
+.hashtags {
+  color: #2563eb;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.loading {
+  margin-top: 15px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+
+
+
