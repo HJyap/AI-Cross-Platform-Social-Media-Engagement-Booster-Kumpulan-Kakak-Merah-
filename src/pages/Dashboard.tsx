@@ -7,7 +7,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import "./Dashboard.css"; 
+import "./Dashboard.css";
 
 const data = [
   { name: "Mon", value: 30 },
@@ -39,7 +39,15 @@ const Dashboard = () => {
       <h1>Dashboard</h1>
       <p>Overview of scheduled posts and engagement activity.</p>
       <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
-        <div style={{ flex: 1, height: 200, background: "#fff", padding: 10, borderRadius: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            height: 200,
+            background: "#fff",
+            padding: 10,
+            borderRadius: 8,
+          }}
+        >
           <h3 style={{ margin: "0 0 10px" }}>Likes</h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -52,7 +60,15 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ flex: 1, height: 200, background: "#fff", padding: 10, borderRadius: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            height: 200,
+            background: "#fff",
+            padding: 10,
+            borderRadius: 8,
+          }}
+        >
           <h3 style={{ margin: "0 0 10px" }}>Comments</h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -65,7 +81,15 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ flex: 1, height: 200, background: "#fff", padding: 10, borderRadius: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            height: 200,
+            background: "#fff",
+            padding: 10,
+            borderRadius: 8,
+          }}
+        >
           <h3 style={{ margin: "0 0 10px" }}>Shares</h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -79,7 +103,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-            <div className="bottom-row">
+      <div className="bottom-row">
         {/* Trends */}
         <div className="trends-card">
           <h3>🔥 Today’s Top 5 Trends</h3>
@@ -93,12 +117,13 @@ const Dashboard = () => {
         {/* Newest Post */}
         <div className="post-card">
           <h3>📝 Your Newest Post</h3>
-          <p><strong>{newestPost.platform}</strong></p>
+          <p>
+            <strong>{newestPost.platform}</strong>
+          </p>
           <p>{newestPost.content}</p>
           <small>{newestPost.time}</small>
         </div>
       </div>
-      
     </div>
   );
 };

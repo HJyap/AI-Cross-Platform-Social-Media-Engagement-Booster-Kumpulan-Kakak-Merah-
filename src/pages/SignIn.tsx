@@ -12,6 +12,8 @@ export default function SignIn() {
     e.preventDefault();
     setError("");
 
+    console.log("Signing in with:", email, password);
+
     try {
       const response = await fetch(
         "https://7s1895lwg3.execute-api.ap-southeast-1.amazonaws.com/dev/signin",
