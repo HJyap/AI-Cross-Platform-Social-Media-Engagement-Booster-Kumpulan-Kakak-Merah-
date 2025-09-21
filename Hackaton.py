@@ -30,6 +30,8 @@ from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
 from fastapi import UploadFile, File, HTTPException
 from uuid import uuid4
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 
 
@@ -69,6 +71,16 @@ nltk.download("punkt")
 
 # ---------- APP ----------
 app = FastAPI(title="Social Media Engagement Booster")
+
+
+# Add CORS middleware to allow requests from your frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (You can specify ["http://localhost:5173"] for specific origins)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 # Initialize Comprehend client
 comprehend = boto3.client('comprehend', region_name='ap-southeast-1')  # Use the region you have configured
 
@@ -113,7 +125,7 @@ YOUTUBE_client_secret = os.getenv("YOUTUBE_client_secret")
 YOUTUBE_refresh_token = os.getenv("YOUTUBE_refresh_token")
 YOUTUBE_access_token = os.getenv("YOUTUBE_access_token")
 # Path to the JSON file you downloaded from Google Cloud Console
-CLIENT_SECRET_FILE = "D:\Hackaton\AI-Cross-Platform-Social-Media-Engagement-Booster-Kumpulan-Kakak-Merah-\client_secrects.json"
+CLIENT_SECRET_FILE = "D:\Coding shit\Hackaton\client_secrects.json"
 
 #instagram API
 INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
@@ -646,21 +658,59 @@ def auto_post_instagram(content, access_token = INSTAGRAM_ACCESS_TOKEN , user_id
 
 
 
+# Define the function for posting to Reddit
+import praw
+
 def auto_post_reddit(content):
-    reddit = praw.Reddit(
-        client_id=REDDIT_CLIENT_ID,
-        client_secret=REDDIT_CLIENT_SECRET,
-        user_agent=REDDIT_USER_AGENT,
-        username=REDDIT_USERNAME,
-        password=REDDIT_PASSWORD
-    )
-    submission = reddit.subreddit("test").submit(
-        title=content["caption"],
-        url=content["media_url"] if "media_url" in content else None,
-        selftext=content.get("text", "")
-    )
-    save_post_history("reddit", submission.id, content, "posted")
-    return {"success": True, "post_id": submission.id}
+    try:
+        # Initialize the Reddit API with your credentials
+        reddit = praw.Reddit(
+            client_id=REDDIT_CLIENT_ID,
+            client_secret=REDDIT_CLIENT_SECRET,
+            user_agent=REDDIT_USER_AGENT,
+            username=REDDIT_USERNAME,
+            password=REDDIT_PASSWORD
+        )
+
+        # Get the subreddit to post to (default is "test")
+        subreddit_name = content.get("subreddit", "test")  # Use 'test' if no subreddit is provided
+
+        # Extract content for the post
+        media_url = content.get("media_url")
+        text = content.get("text", "")
+        caption = content.get("caption", "")
+
+        # Check if media_url is provided (e.g., for an image or video post)
+        if media_url and text:
+            # Submit a post with both a URL and text content
+            submission = reddit.subreddit(subreddit_name).submit(
+                title=caption,
+                url=media_url,  # Submit the media URL (image/video)
+                selftext=text    # Include text if provided
+            )
+        elif media_url:
+            # Submit a post with only a media URL (image/video)
+            submission = reddit.subreddit(subreddit_name).submit(
+                title=caption,
+                url=media_url  # Only URL is provided, no text
+            )
+        elif text:
+            # Submit a text-only post
+            submission = reddit.subreddit(subreddit_name).submit(
+                title=caption,
+                selftext=text  # Only text is provided, no media URL
+            )
+        else:
+            # If neither media_url nor text is provided, raise an error
+            raise ValueError("Either 'selftext' or 'url' must be provided in the content.")
+
+        # Return success with post ID
+        return {"success": True, "platform": "reddit", "post_id": submission.id}
+
+    except Exception as e:
+        # Handle errors (e.g., invalid subreddit, missing content, etc.)
+        return {"success": False, "error": str(e)}
+
 
 
 def auto_post_youtube(content):
@@ -730,6 +780,124 @@ def monitor():
         time.sleep(3600)  # check every hour
 
 
+# Fetch Instagram Insights and return aggregated stats (new name)
+def get_instagram_stats():
+    url = f"https://graph.instagram.com/{INSTAGRAM_USER_ID}/media"
+    params = {
+        "fields": "id,caption,media_type,media_url,timestamp",
+        "access_token": INSTAGRAM_ACCESS_TOKEN
+    }
+    
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    total_likes = 0
+    total_comments = 0
+    total_shares = 0
+
+    if "data" in data:
+        for post in data["data"]:
+            media_id = post["id"]
+            insights_url = f"https://graph.instagram.com/{media_id}/insights"
+            insights_params = {
+                "metric": "likes,comments,shares",
+                "access_token": INSTAGRAM_ACCESS_TOKEN
+            }
+            
+            insights_data = requests.get(insights_url, params=insights_params).json()
+            if "data" in insights_data:
+                for item in insights_data["data"]:
+                    if item["name"] == "likes":
+                        total_likes += item["values"][0].get("value", 0)
+                    elif item["name"] == "comments":
+                        total_comments += item["values"][0].get("value", 0)
+                    elif item["name"] == "shares":
+                        total_shares += item["values"][0].get("value", 0)
+
+    return {
+        "likes": total_likes,
+        "comments": total_comments,
+        "shares": total_shares
+    }
+
+# Fetch Reddit Engagement Data and return aggregated stats (new name)
+def get_reddit_engagement_stats(subreddit_name="all", limit=10):
+    reddit = praw.Reddit(client_id=REDDIT_CLIENT_ID, client_secret=REDDIT_CLIENT_SECRET, user_agent=REDDIT_USER_AGENT)
+    subreddit = reddit.subreddit(subreddit_name)
+    posts = subreddit.hot(limit=limit)
+
+    total_upvotes = 0
+    total_comments = 0
+    total_score = 0
+
+    for post in posts:
+        total_upvotes += post.ups
+        total_comments += post.num_comments
+        total_score += post.score
+
+    return {
+        "upvotes": total_upvotes,
+        "comments": total_comments,
+        "score": total_score
+    }
+
+# Fetch YouTube Video Stats and return aggregated stats (new name)
+def get_youtube_stats():
+    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+    total_views = 0
+    total_likes = 0
+    total_comments = 0
+    total_shares = 0
+
+    next_page_token = None
+    while True:
+        request = youtube.search().list(
+            part="id,snippet",
+            channelId=YOUTUBE_CHANNEL_ID,
+            order="date",
+            maxResults=5,
+            pageToken=next_page_token
+        )
+        response = request.execute()
+        for item in response.get("items", []):
+            if item["id"]["kind"] != "youtube#video":
+                continue
+            video_id = item["id"]["videoId"]
+            video_request = youtube.videos().list(part="statistics", id=video_id)
+            video_response = video_request.execute()
+            stats = video_response["items"][0].get("statistics", {})
+            total_views += int(stats.get("viewCount", 0))
+            total_likes += int(stats.get("likeCount", 0))
+            total_comments += int(stats.get("commentCount", 0))
+            total_shares += int(stats.get("shareCount", 0) if "shareCount" in stats else 0)
+
+        next_page_token = response.get("nextPageToken")
+        if not next_page_token:
+            break
+
+    return {
+        "views": total_views,
+        "likes": total_likes,
+        "comments": total_comments,
+        "shares": total_shares
+    }
+
+# FastAPI Endpoints using new function names
+@app.get("/instagram-stats")
+def get_instagram_stats_endpoint():
+    insights = get_instagram_stats()
+    return {"instagram_stats": insights}
+
+@app.get("/reddit-stats")
+def get_reddit_engagement_stats_endpoint(subreddit: str = "all", limit: int = 10):
+    insights = get_reddit_engagement_stats(subreddit, limit)
+    return {"reddit_engagement_stats": insights}
+
+@app.get("/youtube-stats")
+def get_youtube_stats_endpoint():
+    stats = get_youtube_stats()
+    return {"youtube_video_stats": stats}
+
 
 # # Endpoint to fetch Instagram data
 # @app.get("/instagram_posts")
@@ -772,6 +940,11 @@ def get_reddit_trend(req: TrendRequest):
 #     data = fetch_instagram_data()
 #     return {"instagram_posts": data}
 
+@app.get("/instagram-stats2")
+def get_instagram_stats2():
+    # Fetch Instagram insights and return them as JSON
+    instagram_stats = fetch_instagram_insights()
+    return {"instagram_statistics": instagram_stats}
 
 
 @app.get("/social_media_statistics")
@@ -781,7 +954,7 @@ def get_social_media_statistics():
 
 
     # Fetch Reddit statistics (upvotes, comments, engagement)
-    #reddit_stats = fetch_reddit_engagement("some_subreddit")
+    reddit_stats = fetch_reddit_engagement("some_subreddit")
 
     # # Fetch YouTube statistics (views, likes, comments, shares)
     youtube_stats = fetch_youtube_video_stats()
@@ -789,8 +962,8 @@ def get_social_media_statistics():
     return {
         "instagram_statistics": instagram_stats,
         # "facebook_statistics": facebook_stats,
-        # "reddit_statistics": reddit_stats,
-        # "youtube_statistics": youtube_stats,
+#"reddit_statistics": reddit_stats,
+         "youtube_statistics": youtube_stats,
     }
 
 
@@ -887,3 +1060,19 @@ async def upload_file(file: UploadFile = File(...)):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# FastAPI Endpoints
+@app.get("/instagram")
+def get_instagram_insights():
+    insights = fetch_instagram_insights()
+    return {"instagram_insights": insights}
+
+@app.get("/reddit")
+def get_reddit_engagement(subreddit: str = "all", limit: int = 10):
+    insights = fetch_reddit_engagement(subreddit, limit)
+    return {"reddit_engagement": insights}
+
+@app.get("/youtube")
+def get_youtube_video_stats():
+    stats = fetch_youtube_video_stats()
+    return {"youtube_video_stats": stats}
