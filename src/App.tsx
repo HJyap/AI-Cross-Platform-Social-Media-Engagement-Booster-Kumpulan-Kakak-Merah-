@@ -4,7 +4,6 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { useState, useEffect } from "react";
 
 import MainLayout from "./layouts/MainLayout";
 import Dashboard from "./pages/Dashboard";
@@ -15,12 +14,7 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) setLoggedIn(true);
-  }, []);
+  const loggedIn = localStorage.getItem("loggedIn") === "true";
 
   return (
     <Router>
@@ -29,24 +23,18 @@ function App() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
 
-        {/* Protected pages */}
+        {/* Protected routes */}
         <Route
-          path="/*"
+          path="/"
           element={
-            loggedIn ? (
-              <MainLayout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/createpost" element={<CreatePost />} />
-                  <Route path="/profile" element={<Profile />} />
-                </Routes>
-              </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
-            )
+            loggedIn ? <MainLayout /> : <Navigate to="/signin" replace />
           }
-        />
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="create" element={<CreatePost />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
       </Routes>
     </Router>
   );

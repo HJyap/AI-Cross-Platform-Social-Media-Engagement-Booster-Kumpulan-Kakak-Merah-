@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"; // add at top
 import { useState } from "react";
 import "./Auth.css";
 
@@ -8,7 +9,9 @@ export default function SignUp() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("user", email); // Fake signup = login
+    const newUser = { name, email, password };
+
+    localStorage.setItem("user", JSON.stringify(newUser)); // Save user object
     window.location.href = "/"; // Redirect to dashboard
   };
 
@@ -38,6 +41,9 @@ export default function SignUp() {
           required
         />
         <button type="submit">Sign Up</button>
+        <p>
+          Already have an account? <Link to="/signin">Sign In</Link>
+        </p>
       </form>
     </div>
   );

@@ -1,11 +1,14 @@
 import "./Profile.css";
 
-const user = {
-  name: "John Doe",
-  email: "john@example.com",
-  bio: "Social media enthusiast 🚀 | Content creator | Coffee lover",
-  avatar: "https://i.pravatar.cc/150?img=3", // placeholder avatar
-};
+const storedUser = localStorage.getItem("user");
+const user = storedUser
+  ? JSON.parse(storedUser)
+  : {
+      name: "Guest",
+      email: "guest@example.com",
+      bio: "Not signed in",
+      avatar: "https://i.pravatar.cc/150?img=1",
+    };
 
 export default function Profile() {
   return (
