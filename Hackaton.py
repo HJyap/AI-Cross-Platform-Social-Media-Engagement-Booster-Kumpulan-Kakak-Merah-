@@ -7,7 +7,7 @@ import praw
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel
 from sklearn.model_selection import train_test_split
 from textblob import TextBlob
@@ -21,6 +21,40 @@ import tweepy
 from flask import Flask, request, jsonify
 from datetime import datetime
 from typing import List, Dict
+import base64
+import os
+from dotenv import load_dotenv
+import json
+from typing import Optional
+from googleapiclient.http import MediaFileUpload
+from google.oauth2.credentials import Credentials
+from fastapi import UploadFile, File, HTTPException
+from uuid import uuid4
+
+
+
+
+from config import refresh_youtube_token, refresh_reddit_token 
+
+# Load .env file
+load_dotenv()
+
+
+# Load credentials from your JSON file
+def get_youtube_credentials():
+    with open("youtube_credentials.json", "r") as f:
+        creds_data = json.load(f)
+
+    return Credentials(
+        token=None,
+        refresh_token=refresh_youtube_token(),
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=creds_data["client_id"],
+        client_secret=creds_data["client_secret"],
+        scopes=["https://www.googleapis.com/auth/youtube.upload"]
+    )
+
+
 
 
 
@@ -49,48 +83,47 @@ dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-1')
 table = dynamodb.Table('SocialMediaPosts')  # Replace with your table name
 
 
-# ---------- API KEYS ----------
-BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAAF0J4QEAAAAA3Vcg3gFT3JVo9eUM1W%2BACImEw24%3Dh0i3h3Tlyrw9XkQHa905sknhnRiKe2DiMAQl5TQSF2hlbq4vYq"
-openai.api_key = "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"
 
-client = OpenAI(api_key="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")
+# DynamoDB setup
+# DynamoDB client
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name=os.getenv("AWS_REGION", "ap-southeast-1"),  # Malaysia/Singapore region
+)
+
+
+s3_client = boto3.client("s3")  # creds & region auto-loaded from aws configure
+S3_BUCKET_NAME = "mejuicybucket"
+
+# ---------- API KEYS ----------
 
 # Reddit API credentials
-REDDIT_CLIENT_ID = "fmrNc2_P8mncY-u5s6JQJA"
-REDDIT_CLIENT_SECRET = "lm1aGVBLsD2LoRGsBHqShYVLjXIfIA"
-REDDIT_USER_AGENT = "social-media-engagement-booster:v1.0 (by /u/Whol3yShe3t)"
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
+REDDIT_USERNAME = os.getenv("REDDIT_USERNAME")
+REDDIT_PASSWORD = os.getenv("REDDIT_PASSWORD")
+
 
 # Youtube API Credietial
-YOUTUBE_API_KEY = 'AIzaSyDV4_vepluDtFe9pNRTCf6yQioCDTl9akA'
-YOUTUBE_CHANNEL_ID = 'UCkNBKR-21a9Ly9zjRtU6d1Q'
-
-FACEBOOK_ACCESS_TOKEN = 'your_facebook_access_token'
-FACEBOOK_PAGE_ID = 'your_facebook_page_id'
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
+YOUTUBE_client_id = os.getenv("YOUTUBE_client_id")
+YOUTUBE_client_secret = os.getenv("YOUTUBE_client_secret")
+YOUTUBE_refresh_token = os.getenv("YOUTUBE_refresh_token")
+YOUTUBE_access_token = os.getenv("YOUTUBE_access_token")
+# Path to the JSON file you downloaded from Google Cloud Console
+CLIENT_SECRET_FILE = "D:\Hackaton\AI-Cross-Platform-Social-Media-Engagement-Booster-Kumpulan-Kakak-Merah-\client_secrects.json"
 
 #instagram API
-INSTAGRAM_ACCESS_TOKEN = 'IGAAKEl50wlcxBZAE5NVGdfSVpZATm5NMl92Mkl1NzhZAY2dkNGtJRUt5OGg2bjVJbXp0NmxWczhvdzdIdWxOVTlBYjgwbHJlZAzgzVTNIVHZAXaEQ1SktBUW0zR0NVUjBnUWZAPSUNueXFLb2JSdGoxT0pSbFpFOVZAXYWRiOWpFeGZA0MAZDZD'
-INSTAGRAM_USER_ID = '17841460374471491'
+INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID")
+Meta_ACCESS_TOKEN = os.getenv("Meta_ACCESS_TOKEN")
 
-# Set up Twitter API credentials
-auth = tweepy.OAuthHandler('HIoZKhcM3OTyP3iFP0OwD6MDg', 'Ql6XNRLPcqisINd6xpoKpaCgPZNNq8SxxrxdZE2KeukYbJxwPG')
-auth.set_access_token('782405483265036288-oeoXB99BqUdbgktvWI0CJmZWDDQcrf7', 'VIP1kTWvmHIPdf2IUGKx3nWM8JbGIGO90JVvqwNm9PsXs')
-api = tweepy.API(auth)
 
 
 
 # ---------- DATABASE ----------
-conn = sqlite3.connect("engagement.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    trend TEXT,
-    suggested_post TEXT,
-    prediction TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
-conn.commit()
 
 # Initialize Reddit API with PRAW
 reddit = praw.Reddit(client_id=REDDIT_CLIENT_ID,
@@ -111,22 +144,20 @@ class TrendRequest(BaseModel):
     time: str = "day"  # only used for "top"
     limit: int = 10
 
+# ✅ Request model for creating a post
+class AutoPostRequest(BaseModel):
+    platform: str   # instagram, reddit, youtube
+    post_id: str    # IG media id / Reddit submission id / YouTube video id
+    content: Dict   # {caption, hashtags, media_url...}
+    status: str     # posted, failed
+    metrics: Optional[Dict] = None
+
+class PostRequest(BaseModel):
+    platforms: List[str]     # e.g. ["instagram", "youtube"]
+    content: Dict            # your post details {caption, hashtags, media_url}
+    scheduled_time: Optional[str] = None  # optional if you plan to add scheduling
 # ---------- HELPERS ----------
-def fetch_twitter_trending(woeid: int = 1, limit: int = 10):
-    """Fetch trending topics from Twitter using Tweepy."""
-    try:
-        trends = api.get_place_trends(id=woeid)
-        trending_topics = []
-        for trend in trends[0]['trends'][:limit]:
-            trending_topics.append({
-                "name": trend['name'],
-                "tweet_volume": trend['tweet_volume'],
-                "url": trend['url']
-            })
-        return trending_topics
-    except tweepy.errors.TweepyException as e:
-        print(f"Error fetching trends: {e}")
-        return []
+
 
 
 
@@ -139,23 +170,12 @@ def extract_keywords(text_list):
         words.extend(tokens)
     return Counter(words).most_common(10)
 
-def save_generated_post(trend, suggested_post, prediction, sentiment_score):
-    """Save generated post data to DynamoDB"""
-    response = table.put_item(
-        Item={
-            'id': str(uuid.uuid4()),  # Generate unique ID
-            'trend': trend,
-            'suggested_post': suggested_post,
-            'prediction': prediction,
-            'sentiment_score': sentiment_score
-        }
-    )
-    return response
+
 
 #------------Aws s3 --------------
 
 # Initialize AWS S3 client
-s3 = boto3.client('s3', region_name='us-west-2')  # Replace with your region
+s3 = boto3.client('s3', region_name='ap-southeast-1')  # Replace with your region
 
 # Upload file to S3
 def upload_to_s3(file_path, bucket_name, object_name):
@@ -188,33 +208,6 @@ def get_predictions_from_sagemaker(endpoint_name, data):
 
 #------------------------------------------------------------------
 
-# Preprocess function for cleaning and tokenizing text
-def preprocess_text(text):
-    text = text.lower()  # Convert to lowercase
-    text = re.sub(r'\W+', ' ', text)  # Remove non-alphabetical characters
-    tokens = nltk.word_tokenize(text)  # Tokenize text into words
-    return ' '.join(tokens)
-
-# Example of how to preprocess and structure data
-def prepare_data(posts):
-    # Assuming posts is a list of dictionaries with 'text' and 'label' (0 or 1)
-    texts = [preprocess_text(post['text']) for post in posts]
-    labels = [post['label'] for post in posts]
-    
-    return texts, labels
-
-# Save model and tokenizer after training
-def save_model(model, tokenizer, model_filename="model.h5", tokenizer_filename="tokenizer.pkl"):
-    model.save(model_filename)
-    with open(tokenizer_filename, 'wb') as handle:
-        pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-# Load saved model and tokenizer
-def load_model_and_tokenizer(model_filename="model.h5", tokenizer_filename="tokenizer.pkl"):
-    model = keras.models.load_model(model_filename)
-    with open(tokenizer_filename, 'rb') as handle:
-        tokenizer = pickle.load(handle)
-    return model, tokenizer
 
 # Helper function to fetch Reddit data
 def fetch_reddit_data(query: str , limit=10):
@@ -222,6 +215,25 @@ def fetch_reddit_data(query: str , limit=10):
     res = requests.get(url, headers={"User-agent": "engagement-bot"})
     return res.json()
 
+
+def upload_to_s3(file_path, filename):
+    """Upload file to S3 and return URL"""
+    s3_client.upload_file(file_path, S3_BUCKET_NAME, filename)
+    url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{filename}"
+    return url
+
+
+def save_post_history(platform, post_id, content, status):
+    """Save post history into DynamoDB"""
+    item = {
+        "platform": platform,
+        "post_id": post_id,
+        "status": status,
+        "content": json.dumps(content),   # store content as JSON string
+        "timestamp": datetime.utcnow().isoformat() 
+    }
+    table.put_item(Item=item)
+    print(f"✅ Saved post history for {platform} (ID: {post_id})")
 
 def fetch_reddit_trending(subreddit="all", time="day", limit=10):
     # Hot posts
@@ -243,76 +255,10 @@ def get_sentiment(text):
 
 
 
-# # Helper function to fetch Instagram data
-# def fetch_instagram_data():
-#     """Fetch Instagram posts from the user's account"""
-#     url = f"https://graph.instagram.com/{INSTAGRAM_USER_ID}/media?fields=id,caption,media_type,media_url&access_token={INSTAGRAM_ACCESS_TOKEN}"
-#     response = requests.get(url)
-#     return response.json().get("data", [])
-
-# ---------- ML MODEL ----------
-def build_lstm_model(vocab_size, input_length):
-    model = keras.Sequential([
-        keras.layers.Embedding(input_dim=vocab_size, output_dim=100, input_length=input_length),
-        keras.layers.LSTM(64, return_sequences=True),
-        keras.layers.GlobalAveragePooling1D(),
-        keras.layers.Dense(64, activation='relu'),
-        keras.layers.Dense(1, activation='sigmoid')  # Output layer for binary classification
-    ])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    return model
-
-def prepare_data_with_embeddings(posts, tokenizer, max_length=100):
-    texts, labels = prepare_data(posts)
-    sequences = tokenizer.texts_to_sequences(texts)
-    data = keras.preprocessing.sequence.pad_sequences(sequences, maxlen=max_length, padding='post')
-    return data, np.array(labels)
-
-cache = {}
 
 
 
 
-#testing and trainitn ANN
-def train_model(posts):
-    texts, labels = prepare_data(posts)
-    
-    # Tokenize and pad sequences to a fixed length
-    tokenizer = keras.preprocessing.text.Tokenizer()
-    tokenizer.fit_on_texts(texts)
-    sequences = tokenizer.texts_to_sequences(texts)
-    data = keras.preprocessing.sequence.pad_sequences(sequences, padding='post')
-    
-    # Convert labels to numpy array
-    labels = np.array(labels)
-    
-    # Split data into training and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(data, labels, test_size=0.2, random_state=42)
-    
-    # Build the model
-    model = build_lstm_model(vocab_size=len(tokenizer.word_index) + 1, input_length=data.shape[1])
-    
-    # Train the model
-    model.fit(X_train, y_train, epochs=5, validation_data=(X_val, y_val))
-
-    model.save("trend_predict_model.h5")
-    with open("tokenizer.pkl", "wb") as f:
-        pickle.dump(tokenizer, f)
-
-    
-    return model, tokenizer
-
-def load_model_and_tokenizer():
-    model = keras.models.load_model("trend_predict_model.h5")
-    with open('tokenizer.pkl', 'rb') as handle:
-        tokenizer = pickle.load(handle)
-    return model, tokenizer
-
-# Load ML model once
-try:
-    model, tokenizer = load_model_and_tokenizer()
-except:
-    model, tokenizer = None, None
 
 
 
@@ -394,38 +340,7 @@ def fetch_instagram_insights():
 
 
 
-def fetch_facebook_insights():
-    """Fetch detailed Facebook Page insights (clicks, views, shares)"""
-    
-    # Fetch Facebook Page posts with insights (engagement, shares, likes, etc.)
-    url = f"https://graph.facebook.com/{FACEBOOK_PAGE_ID}/posts?fields=id,message,shares,likes.summary(true),insights.metric(post_engaged_users,post_clicks,post_impressions)&access_token={FACEBOOK_ACCESS_TOKEN}"
-    
-    response = requests.get(url)
-    data = response.json()
 
-    # Prepare insights for each post
-    post_insights = []
-    
-    for post in data.get("data", []):
-        post_id = post["id"]
-        message = post.get("message", "")
-        shares = post.get("shares", {}).get("count", 0)
-        likes = post.get("likes", {}).get("summary", {}).get("total_count", 0)
-        clicks = next((item['values'][0] for item in post.get("insights", {}).get("data", []) if item['name'] == 'post_clicks'), 0)
-        impressions = next((item['values'][0] for item in post.get("insights", {}).get("data", []) if item['name'] == 'post_impressions'), 0)
-        engaged_users = next((item['values'][0] for item in post.get("insights", {}).get("data", []) if item['name'] == 'post_engaged_users'), 0)
-        
-        post_insights.append({
-            "post_id": post_id,
-            "message": message,
-            "shares": shares,
-            "likes": likes,
-            "clicks": clicks,
-            "impressions": impressions,
-            "engaged_users": engaged_users
-        })
-    
-    return post_insights
 
 def fetch_reddit_engagement(subreddit_name="all", limit=10):
     subreddit = reddit.subreddit(subreddit_name)
@@ -596,15 +511,15 @@ def fetch_reddit_trending_best_posting_time(subreddit):
 
 
 
-def fetch_instagram_hashtag_posts(hashtag, access_token=INSTAGRAM_ACCESS_TOKEN):
+def fetch_instagram_hashtag_posts(hashtag, access_token = Meta_ACCESS_TOKEN):
     """Fetch Instagram posts for a trending hashtag and analyze engagement"""
     
     # First, search for the hashtag ID
-    hashtag_search_url = f'https://graph.instagram.com/v12.0/ig_hashtag_search'
+    hashtag_search_url = f'https://graph.facebook.com/v12.0/ig_hashtag_search'
     hashtag_search_params = {
-        'user_id': INSTAGRAM_USER_ID,
+        'user_id': "17841460374471491",
         'q': hashtag,
-        'access_token': access_token
+        'access_token': Meta_ACCESS_TOKEN
     }
 
     hashtag_search_response = requests.get(hashtag_search_url, params=hashtag_search_params)
@@ -625,7 +540,7 @@ def fetch_instagram_hashtag_posts(hashtag, access_token=INSTAGRAM_ACCESS_TOKEN):
     # Fetch top media posts for the hashtag
     posts_url = f'https://graph.instagram.com/{hashtag_id}/top_media'
     posts_params = {
-        'access_token': access_token,
+        'access_token': Meta_ACCESS_TOKEN,
         'fields': 'id,caption,media_type,like_count,comments_count,timestamp',
         'limit': 100  # Fetch up to 100 posts
     }
@@ -659,7 +574,139 @@ def fetch_instagram_hashtag_posts(hashtag, access_token=INSTAGRAM_ACCESS_TOKEN):
         print("No posts data found for the hashtag.")
         return None, 0
 
+#-------------AUto Post---------------------
 
+def upload_media_to_instagram(media_url, access_token, user_id):
+    url = f"https://graph.instagram.com/{user_id}/media"
+    
+    # Payload to upload the media (image/video)
+    payload = {
+        "image_url": media_url,  # Image URL for upload
+        "access_token": access_token
+    }
+    
+    # Send request to upload media
+    res = requests.post(url, data=payload).json()
+    
+    if "id" in res:
+        media_id = res["id"]  # Media ID returned from Instagram
+        print(f"Media uploaded successfully! Media ID: {media_id}")
+        return media_id
+    else:
+        print(f"Error uploading media: {res.get('error', 'Unknown error')}")
+        return None
+# Function to auto-post to Instagram (with 2-step process)
+
+
+def publish_post(media_id, access_token, user_id):
+    url = f"https://graph.instagram.com/{user_id}/media_publish"
+    payload = {
+        "creation_id": media_id,
+        "access_token": INSTAGRAM_ACCESS_TOKEN
+    }
+
+    res = requests.post(url, data=payload).json()
+
+    if "id" in res:
+        return res["id"]  # Return post_id after successful publish
+    else:
+        raise HTTPException(status_code=400, detail="Failed to publish post on Instagram")
+def auto_post_instagram(content):
+    # Replace with your actual Instagram access token and user ID
+    INSTAGRAM_USER_ID = "your_instagram_user_id"
+    INSTAGRAM_ACCESS_TOKEN = "your_instagram_access_token"
+    
+    # Step 1: Upload media
+    media_id = upload_media_to_instagram(content["media_url"], INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_USER_ID)
+
+    # Step 2: Publish post using the media ID
+    post_id = publish_post(media_id, INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_USER_ID)
+
+    return {"success": True, "post_id": post_id}
+
+
+def auto_post_reddit(content):
+    reddit = praw.Reddit(
+        client_id=REDDIT_CLIENT_ID,
+        client_secret=REDDIT_CLIENT_SECRET,
+        user_agent=REDDIT_USER_AGENT,
+        username=REDDIT_USERNAME,
+        password=REDDIT_PASSWORD
+    )
+    submission = reddit.subreddit("test").submit(
+        title=content["caption"],
+        url=content["media_url"] if "media_url" in content else None,
+        selftext=content.get("text", "")
+    )
+    save_post_history("reddit", submission.id, content, "posted")
+    return {"success": True, "post_id": submission.id}
+
+
+def auto_post_youtube(content):
+    creds = get_youtube_credentials()
+    youtube = build("youtube", "v3", credentials=creds)
+
+    request = youtube.videos().insert(
+        part="snippet,status",
+        body={
+            "snippet": {
+                "title": content["caption"],
+                "description": " ".join(content.get("hashtags", []))
+            },
+            "status": {"privacyStatus": "public"}
+        },
+        media_body=MediaFileUpload(content["media_url"], chunksize=-1, resumable=True)
+    )
+
+    response = request.execute()
+    video_id = response.get("id")
+
+    save_post_history("youtube", video_id, content, "posted")
+
+    return {"success": True, "post_id": video_id}
+
+
+
+#------------------GAther ACcount DAta--------------
+
+
+
+
+def check_instagram_followers(access_token = "IGAAKEl50wlcxBZAE5NVGdfSVpZATm5NMl92Mkl1NzhZAY2dkNGtJRUt5OGg2bjVJbXp0NmxWczhvdzdIdWxOVTlBYjgwbHJlZAzgzVTNIVHZAXaEQ1SktBUW0zR0NVUjBnUWZAPSUNueXFLb2JSdGoxT0pSbFpFOVZAXYWRiOWpFeGZA0MAZDZD", ig_user_id = "17841460374471491"):
+    resp = requests.get(
+        f"https://graph.facebook.com/v18.0/{ig_user_id}",
+        params={"fields": "followers_count", "access_token": access_token}
+    )
+    return resp.json().get("followers_count")
+
+def check_youtube_subscribers(access_token):
+    resp = requests.get(
+        "https://www.googleapis.com/youtube/v3/channels",
+        params={"part": "statistics", "mine": "true", "access_token": access_token}
+    )
+    return resp.json()["items"][0]["statistics"]["subscriberCount"]
+
+def check_reddit_subscribers(access_token, subreddit):
+    resp = requests.get(
+        f"https://oauth.reddit.com/r/{subreddit}/about",
+        headers={"Authorization": f"bearer {access_token}", "User-Agent": "MyApp/0.1"}
+    )
+    return resp.json()["data"]["subscribers"]
+
+def monitor():
+    while True:
+        yt_token = refresh_youtube_token()
+        reddit_token = refresh_reddit_token()
+
+        ig_followers = check_instagram_followers(INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_USER_ID)
+        yt_subscribers = check_youtube_subscribers(yt_token)
+        reddit_subscribers = check_reddit_subscribers(reddit_token, "yoursubreddit")
+
+        print("Instagram followers:", ig_followers)
+        print("YouTube subscribers:", yt_subscribers)
+        print("Reddit subscribers:", reddit_subscribers)
+
+        time.sleep(3600)  # check every hour
 
 
 
@@ -704,27 +751,13 @@ def get_reddit_trend(req: TrendRequest):
 #     data = fetch_instagram_data()
 #     return {"instagram_posts": data}
 
-@app.post("/twitter_trending")
-def get_twitter_trending(req: TrendRequest):
-    """Fetch trending topics from Twitter based on WOEID"""
-    woeid = 1154781  # Default WOEID for Malaysia
-    
-    # Fetch trending topics using the function
-    trending_topics = fetch_twitter_trending(woeid, req.limit)
-    
-    # If no topics are found, return a message
-    if not trending_topics:
-        return {"message": "No trending topics available at the moment."}
-    
-    return {"trending_topics": trending_topics}
+
 
 @app.get("/social_media_statistics")
 def get_social_media_statistics():
     # Fetch Instagram statistics (views, clicks, shares)
     instagram_stats = fetch_instagram_insights()
 
-    # # Fetch Facebook statistics (clicks, views, shares)
-    # facebook_stats = fetch_facebook_insights()
 
     # Fetch Reddit statistics (upvotes, comments, engagement)
     #reddit_stats = fetch_reddit_engagement("some_subreddit")
@@ -740,77 +773,92 @@ def get_social_media_statistics():
     }
 
 
-@app.post("/generate_post")
-def generate_post(req: GenerateRequest):
-    # Create a prompt as usual
-    user_prompt = f"Based on the trend '{req.trend}', create a short, catchy social media post with emojis and hashtags."
-    
-    # ✅ Use messages instead of prompt
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",  # you can use gpt-5 if you have access
-        messages=[
-            {"role": "system", "content": "You are a social media expert that writes viral posts."},
-            {"role": "user", "content": user_prompt}
-        ],
-        max_tokens=100
+
+
+# ✅ Fetch all post history
+@app.get("/post_history")
+def get_post_history():
+    resp = table.scan()
+    items = resp.get("Items", [])
+    # Convert JSON strings back to dicts
+    for item in items:
+        item["content"] = json.loads(item["content"])
+        item["metrics"] = json.loads(item["metrics"])
+    return {"history": items}
+
+
+
+
+
+# ✅ Update metrics for a post
+class MetricsUpdateRequest(BaseModel):
+    platform: str
+    post_id: str
+    metrics: Dict
+
+
+@app.post("/update_metrics")
+def update_metrics(request: MetricsUpdateRequest):
+    key = {"id": f"{request.platform}_{request.post_id}"}
+
+    table.update_item(
+        Key=key,
+        UpdateExpression="set metrics = :m",
+        ExpressionAttributeValues={":m": json.dumps(request.metrics)},
     )
+    return {"message": f"📈 Metrics updated for {request.platform}_{request.post_id}"}
 
-    # ✅ Extract text correctly (new format)
-    post_text = response.choices[0].message.content.strip()
-    
-    # Run sentiment analysis
-    sentiment_score = get_sentiment(post_text)
-    
-    # No ML prediction yet, so mark as None or "Pending"
-    prediction = None  
-    
-    # Save to DB
-    save_generated_post(req.trend, post_text, prediction, sentiment_score)
-
-    return {
-        "trend": req.trend, 
-        "suggested_post": post_text, 
-        "prediction": prediction, 
-        "sentiment_score": sentiment_score
-    }
+# ✅ Fetch all post history
+@app.get("/post_history")
+def get_post_history():
+    resp = table.scan()
+    items = resp.get("Items", [])
+    # Convert JSON strings back to dicts
+    for item in items:
+        item["content"] = json.loads(item["content"])
+        item["metrics"] = json.loads(item["metrics"])
+    return {"history": items}
 
 
-@app.post("/predict_trend")
-def predict_trend(req: TrendRequest):
-    text = preprocess_text(req.query)
-    model, tokenizer = load_model_and_tokenizer()
-    sequence = tokenizer.texts_to_sequences([text])
-    padded_sequence = keras.preprocessing.sequence.pad_sequences(sequence, padding='post', maxlen=100)
-    prediction = model.predict(padded_sequence)
+@app.post("/auto_post")
+async def auto_post(request: PostRequest):
+    data = request.dict()
+    results = {}
 
-    sentiment_score = get_sentiment(req.query)
-    trending = 'Yes' if prediction[0][0] > 0.5 else 'No'
+    if "instagram" in data["platforms"]:
+        results["instagram"] = auto_post_instagram(data["content"])
 
-    return {
-        "query": req.query,
-        "predicted_trend": trending,
-        "prediction_confidence": prediction[0][0],
-        "sentiment_score": sentiment_score
-    }
+    if "reddit" in data["platforms"]:
+        results["reddit"] = auto_post_reddit(data["content"])
 
-@app.get("/history")
-def get_history():
-    """Fetch all generated posts from DB"""
-    cursor.execute("SELECT * FROM posts ORDER BY id DESC")
-    rows = cursor.fetchall()
-    return {
-        "history": [
-            {
-                "id": r[0],
-                "trend": r[1],
-                "suggested_post": r[2],
-                "prediction": r[3],
-                "sentiment_score": r[4]
-            } for r in rows
-        ]
-    }
+    if "youtube" in data["platforms"]:
+        results["youtube"] = auto_post_youtube(data["content"])
 
-from fastapi import FastAPI
-import requests
+    return {"status": "done", "results": results}
 
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Generate unique filename
+        file_extension = file.filename.split(".")[-1]
+        unique_filename = f"{uuid4()}.{file_extension}"
 
+        # Save locally (for YouTube upload)
+        local_path = f"temp_uploads/{unique_filename}"
+        os.makedirs("temp_uploads", exist_ok=True)
+
+        with open(local_path, "wb") as f:
+            f.write(await file.read())
+
+        # Upload to S3
+        s3_client.upload_file(local_path, S3_BUCKET_NAME, unique_filename)
+        s3_url = f"https://{S3_BUCKET_NAME}.s3.ap-southeast-1'.amazonaws.com/{unique_filename}"
+
+        return {
+            "success": True,
+            "s3_url": s3_url,        # for Instagram/Reddit
+            "local_path": local_path # for YouTube
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
