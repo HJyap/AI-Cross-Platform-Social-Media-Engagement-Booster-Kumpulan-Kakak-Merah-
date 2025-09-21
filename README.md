@@ -52,7 +52,7 @@ Run the FastAPI server:
 
 uvicorn main:app --reload
  ```
-#Features
+### Features
 Instagram Engagement Insights: Fetch likes, comments, shares, reach, and other insights for Instagram posts.
 
 #Reddit Engagement Stats#: Fetch Reddit posts and their engagement stats (upvotes, comments, score).
@@ -65,23 +65,23 @@ Instagram Engagement Insights: Fetch likes, comments, shares, reach, and other i
 
 #AWS S3 Upload#: Upload media files (images/videos) to an AWS S3 bucket.
 
-#API Endpoints
-1. Instagram Stats
+## API Endpoints
+### 1. Instagram Stats
 GET /instagram-stats
 Fetch Instagram post insights (likes, comments, shares).
 
 GET /instagram
 Fetch Instagram media insights.
 
-#2. Reddit Stats
+### 2. Reddit Stats
 GET /reddit
 Fetch Reddit engagement stats (upvotes, comments, score).
 
-#3. YouTube Stats
+### 3. YouTube Stats
 GET /youtube
 Fetch YouTube video stats (views, likes, comments).
 
-#4. Auto-Post
+### 4. Auto-Post
 POST /auto_post
 Automatically post content to Instagram, Reddit, or YouTube.
 
@@ -110,7 +110,7 @@ Copy code
   }
 }
 ```
-# 5. Suggest Best Time to Post
+### 5. Suggest Best Time to Post
 POST /suggest_time
 Suggest the best time to post on Instagram, Reddit, and YouTube based on hashtags and subreddit.
 
@@ -123,13 +123,13 @@ Copy code
   "subreddit": "popular"
 }
 ```
-# 6. Upload Media to S3
+### 6. Upload Media to S3
 ```POST /upload```
 Upload media to S3 and return the URL.
 
 ```Request: File upload.```
 
-# 7. Social Media Statistics
+### 7. Social Media Statistics
 ```GET /social_media_statistics```
 Fetch aggregated statistics for Instagram, Reddit, and YouTube.
 
@@ -149,5 +149,5 @@ For example, to fetch Instagram insights:
 
 curl -X GET http://localhost:8000/instagram-stats
 ```
-#Contributors
+## Contributors
 Leong Jun Chuen
