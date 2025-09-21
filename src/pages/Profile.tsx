@@ -18,15 +18,6 @@ export default function Profile() {
         <h2>{user.name}</h2>
         <p>{user.email}</p>
         <p>{user.bio}</p>
-
-        <button
-          onClick={() => {
-            localStorage.removeItem("user");
-            window.location.href = "/signin";
-          }}
-        >
-          Sign Out
-        </button>
       </div>
     </div>
   );
