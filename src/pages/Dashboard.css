@@ -1,38 +1,113 @@
-.graph-row {
-  display: flex;
-  gap: 20px;
-  margin-top: 20px;
+/* General styles */
+.dashboard {
+  padding: 20px;
+  font-family: Arial, sans-serif;
 }
 
-.graph-card {
-  flex: 1;
-  height: 200px;
+h1 {
+  text-align: center;
+  font-size: 30px;
+  margin-bottom: 20px;
+}
+
+.stats-card {
   background: #fff;
-  padding: 10px;
+  padding: 20px;
   border-radius: 8px;
-  border: 1px solid #e6e9ee;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
-.bottom-row {
+.stats-card h3 {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.stats-card p {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+/* Flexbox Layout for smaller screen sizes */
+.dashboard-content {
   display: flex;
-  gap: 20px;
-  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 20px;  /* Space between the cards */
 }
 
-.trends-card,
-.post-card {
-  flex: 1;
+/* Adjust legend and labels */
+.reddit-pie-chart .recharts-legend {
+  margin-top: 10px; /* Add some space between chart and legend */
+}
+
+.reddit-pie-chart .recharts-pie-label {
+  font-size: 14px;
+  font-weight: bold;
+  padding: 5px;
+  text-align: center;
+}
+
+.dashboard-content .stats-card {
+  flex: 1 1 calc(33% - 20px);  /* Three columns */
+  min-width: 300px;  /* Make sure cards are not too small */
+  box-sizing: border-box;
+}
+
+/* Trend Section */
+.trends-card {
   background: #fff;
-  padding: 15px;
+  padding: 20px;
   border-radius: 8px;
-  border: 1px solid #e6e9ee;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.trends-card h3 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #d9534f;
 }
 
 .trends-card ul {
-  margin: 0;
-  padding-left: 20px;
+  list-style-type: none;
+  padding: 0;
 }
 
 .trends-card li {
-  margin: 5px 0;
+  background-color: #f9f9f9;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.trends-card li a {
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trends-card li .score {
+  font-size: 14px;
+  color: #777;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content .stats-card {
+    flex: 1 1 calc(50% - 20px);  /* Two columns on smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-content .stats-card {
+    flex: 1 1 100%;  /* Stack cards on very small screens */
+  }
 }
