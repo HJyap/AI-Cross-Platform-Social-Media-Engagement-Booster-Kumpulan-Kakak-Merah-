@@ -1,0 +1,33 @@
+.platform-buttons,
+.metric-buttons {
+  margin: 15px 0;
+}
+
+.platform-buttons button,
+.metric-buttons button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.platform-buttons button:hover,
+.metric-buttons button:hover {
+  background: #eee;
+}
+
+button.active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.big-graph {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e6e9ee;
+}

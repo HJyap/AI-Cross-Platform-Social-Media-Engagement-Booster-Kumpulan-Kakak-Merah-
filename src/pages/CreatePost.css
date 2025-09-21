@@ -1,0 +1,52 @@
+.create-post {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+textarea {
+  min-height: 100px;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+input[type="file"] {
+  padding: 5px;
+}
+
+button {
+  padding: 10px;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #374151;
+}
+
+.preview {
+  margin-top: 20px;
+}
+
+.preview-card {
+  background: #fff;
+  border: 1px solid #e6e9ee;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.preview-card img {
+  max-width: 100%;
+  margin-top: 10px;
+  border-radius: 6px;
+}
