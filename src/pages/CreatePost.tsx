@@ -5,61 +5,59 @@ import "./CreatePost.css";
 export default function CreatePost() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // ✅ Hold generated fake post details
-  const [fakePost, setFakePost] = useState<{
+  // post details returned from Lambda
+  const [postData, setPostData] = useState<{
     caption: string;
     hashtags: string[];
     bestTime: string;
     score: number;
   } | null>(null);
 
-  const [loading, setLoading] = useState(false); // ✅ for delay spinner
+  const [loading, setLoading] = useState(false);
 
-  // Handle image selection (no backend call anymore)
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // deployed API Gateway endpoint
+  const API_URL = "https://<your-api-id>.execute-api.<region>.amazonaws.com/createPost";
+
+  // image selection and upload to backend pipeline
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
 
-    // Show preview
+    // show preview
     setImagePreview(URL.createObjectURL(file));
-    setLoading(true); // start loading
+    setLoading(true);
 
-    // Simulate AI "thinking"
-    setTimeout(() => {
-      const hashtagsList = [
-        ["#Foodie", "#ViralNow", "#AachenLife", "#Inspo"],
-        ["#StudyBreak", "#TechVibes", "#CampusLife", "#GoodEats"],
-        ["#NatureShot", "#Relax", "#Motivation", "#Aesthetic"],
-      ];
-      const randomTags =
-        hashtagsList[Math.floor(Math.random() * hashtagsList.length)];
-
-      const times = [
-        "Monday 8:00 PM",
-        "Wednesday 6:00 PM",
-        "Friday 9:00 AM",
-        "Sunday 3:00 PM",
-      ];
-      const bestTime = times[Math.floor(Math.random() * times.length)];
-
-      // ✅ Generate dummy captions
-      const captions = [
-        "Can’t believe how good this looks 🤩",
-        "Just another day, another memory 🌟",
-        "Energy boost to keep me going ⚡",
-        "The vibes are immaculate ✨",
-        "Work hard, snack harder 😋",
-      ];
-      const caption = captions[Math.floor(Math.random() * captions.length)];
-
-      setFakePost({
-        caption,
-        hashtags: randomTags,
-        bestTime,
-        score: Math.floor(Math.random() * 100), // random score 0-99
+    try {
+      // ask backend for a pre-signed upload URL
+      const presignRes = await fetch(`${API_URL}/getPresignedUrl`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
-      setLoading(false); // stop loading
-    }, 2000); // ✅ 2s delay
+      const { uploadUrl, fileKey } = await presignRes.json();
+
+      // upload file directly to S3
+      await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      // call backend to analyze the uploaded file
+      const analyzeRes = await fetch(`${API_URL}/analyzePost`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileKey }),
+      });
+
+      const data = await analyzeRes.json();
+      setPostData(data); // { caption, hashtags, bestTime, score }
+    } catch (err) {
+      console.error("Error creating post:", err);
+      alert("Failed to generate post. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,32 +65,28 @@ export default function CreatePost() {
       <h1>Create Post</h1>
 
       <form>
-        {/* Image Upload */}
         <input type="file" accept="image/*" onChange={handleImageChange} />
       </form>
 
-      {/* Preview */}
       <div className="preview">
         <h3>Preview</h3>
         <div className="preview-card">
           {imagePreview && <img src={imagePreview} alt="preview" />}
 
-          {/* Loading spinner */}
-          {loading && <p className="loading">🤖 Generating post...</p>}
+          {loading && <p className="loading">🤖 Analyzing post...</p>}
 
-          {/* ✅ Fake post details */}
-          {!loading && fakePost && (
+          {!loading && postData && (
             <div className="post-details">
               <h4>✨ AI-Generated Post</h4>
-              <p className="caption">📝 {fakePost.caption}</p>
+              <p className="caption">📝 {postData.caption}</p>
               <p className="hashtags">
-                {fakePost.hashtags.map((h, i) => (
+                {postData.hashtags.map((h, i) => (
                   <span key={i}>{h} </span>
                 ))}
               </p>
-              <p>📅 Best Time: {fakePost.bestTime}</p>
+              <p>📅 Best Time: {postData.bestTime}</p>
               <p>
-                ⭐ Post Score: <strong>{fakePost.score}/100</strong>
+                ⭐ Post Score: <strong>{postData.score}/100</strong>
               </p>
             </div>
           )}
@@ -101,6 +95,7 @@ export default function CreatePost() {
     </div>
   );
 }
+
 
 
 
